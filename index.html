@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chia sẻ vị trí của tôi</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-image: url("./background.png");
+        background-position: center;
+        background-size: cover;
+        object-fit: cover;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        min-height: 100vh;
+      }
+
+      .container {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 28px;
+      }
+
+      .map-icon {
+        font-size: 40px;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      #map {
+        height: 300px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        display: none;
+      }
+
+      #map.active {
+        display: block;
+      }
+
+      .coordinates-box {
+        background: #f8f9fa;
+        border: 2px dashed #667eea;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+        display: none;
+      }
+
+      .coordinates-box.active {
+        display: block;
+      }
+
+      .coordinates-label {
+        color: #667eea;
+        font-weight: bold;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+
+      .coordinates-value {
+        font-size: 24px;
+        color: #333;
+        font-weight: bold;
+        font-family: "Courier New", monospace;
+        margin-bottom: 15px;
+        word-break: break-all;
+      }
+
+      .copy-hint {
+        color: #666;
+        font-size: 13px;
+        margin-top: 10px;
+      }
+
+      button {
+        width: 100%;
+        padding: 15px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 15px;
+      }
+
+      .btn-get-location {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-get-location:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-copy-coords {
+        background: #17a2b8;
+        color: white;
+        display: none;
+      }
+
+      .btn-copy-coords.active {
+        display: block;
+      }
+
+      .btn-copy-coords:hover {
+        background: #138496;
+        transform: translateY(-2px);
+      }
+
+      .btn-share-link {
+        background: #28a745;
+        color: white;
+        display: none;
+      }
+
+      .btn-share-link.active {
+        display: block;
+      }
+
+      .btn-share-link:hover {
+        background: #218838;
+        transform: translateY(-2px);
+      }
+
+      .loading {
+        text-align: center;
+        color: #667eea;
+        display: none;
+        margin: 20px 0;
+      }
+
+      .loading.active {
+        display: block;
+      }
+
+      .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        display: none;
+      }
+
+      .error.active {
+        display: block;
+      }
+
+      .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 10px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        display: none;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+      }
+
+      .toast.active {
+        display: block;
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toast" id="toast">✅ Đã sao chép!</div>
+
+    <div class="container">
+      <div class="map-icon">📍</div>
+      <h1>Chia sẻ vị trí của tôi</h1>
+
+      <div class="error" id="error"></div>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Đang lấy vị trí...</p>
+      </div>
+
+      <div id="map"></div>
+
+      <div class="coordinates-box" id="coordinatesBox">
+        <div class="coordinates-label">📍 MÃ VỊ TRÍ</div>
+        <div class="coordinates-value" id="coordinates">-</div>
+        <div class="copy-hint">Dán mã này vào Google Maps để tìm vị trí</div>
+      </div>
+
+      <button class="btn-get-location" id="getLocationBtn">
+        🌍 Xem vị trí của tôi
+      </button>
+
+      <button class="btn-copy-coords" id="copyCoordsBtn">
+        📋 Copy mã vị trí
+      </button>
+
+      <button class="btn-share-link" id="shareLinkBtn">
+        📤 Chia sẻ link cho bạn bè
+      </button>
+      <div
+        style="
+          text-align: center;
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px solid #e0e0e0;
+          color: #666;
+          font-size: 13px;
+        "
+      >
+        © 2025 DVHcoding & Fluentez
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      let currentLat = null;
+      let currentLng = null;
+      let map = null;
+      let marker = null;
+
+      const getLocationBtn = document.getElementById("getLocationBtn");
+      const copyCoordsBtn = document.getElementById("copyCoordsBtn");
+      const shareLinkBtn = document.getElementById("shareLinkBtn");
+      const loading = document.getElementById("loading");
+      const error = document.getElementById("error");
+      const coordinatesBox = document.getElementById("coordinatesBox");
+      const coordinatesEl = document.getElementById("coordinates");
+      const mapDiv = document.getElementById("map");
+      const toast = document.getElementById("toast");
+
+      // Khởi tạo bản đồ
+      function initMap(lat, lng) {
+        if (!map) {
+          map = L.map("map").setView([lat, lng], 15);
+
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap contributors",
+            maxZoom: 19,
+          }).addTo(map);
+        } else {
+          map.setView([lat, lng], 15);
+        }
+
+        if (marker) {
+          marker.setLatLng([lat, lng]);
+        } else {
+          marker = L.marker([lat, lng]).addTo(map);
+        }
+
+        marker.bindPopup("<b>Vị trí của bạn</b>").openPopup();
+      }
+
+      // Kiểm tra xem có tọa độ trong URL không
+      function checkURLParams() {
+        const params = new URLSearchParams(window.location.search);
+        const lat = params.get("lat");
+        const lng = params.get("lng");
+
+        if (lat && lng) {
+          const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+          window.location.href = mapsUrl;
+        }
+      }
+
+      // Lấy vị trí hiện tại
+      function getCurrentLocation() {
+        if (!navigator.geolocation) {
+          showError("Trình duyệt của bạn không hỗ trợ định vị!");
+          return;
+        }
+
+        loading.classList.add("active");
+        error.classList.remove("active");
+        coordinatesBox.classList.remove("active");
+        copyCoordsBtn.classList.remove("active");
+        shareLinkBtn.classList.remove("active");
+        mapDiv.classList.remove("active");
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            currentLat = position.coords.latitude;
+            currentLng = position.coords.longitude;
+
+            const coordsString = `${currentLat}, ${currentLng}`;
+            coordinatesEl.textContent = coordsString;
+
+            loading.classList.remove("active");
+            coordinatesBox.classList.add("active");
+            copyCoordsBtn.classList.add("active");
+            shareLinkBtn.classList.add("active");
+            mapDiv.classList.add("active");
+
+            initMap(currentLat, currentLng);
+          },
+          (err) => {
+            loading.classList.remove("active");
+            let errorMsg = "Không thể lấy vị trí. ";
+
+            switch (err.code) {
+              case err.PERMISSION_DENIED:
+                errorMsg += "Bạn đã từ chối quyền truy cập vị trí.";
+                break;
+              case err.POSITION_UNAVAILABLE:
+                errorMsg += "Thông tin vị trí không khả dụng.";
+                break;
+              case err.TIMEOUT:
+                errorMsg += "Yêu cầu đã hết thời gian.";
+                break;
+              default:
+                errorMsg += "Đã xảy ra lỗi không xác định.";
+            }
+
+            showError(errorMsg);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          },
+        );
+      }
+
+      // Copy mã tọa độ
+      function copyCoordinates() {
+        if (!currentLat || !currentLng) {
+          showError("Vui lòng lấy vị trí trước!");
+          return;
+        }
+
+        const coordsString = `${currentLat}, ${currentLng}`;
+        copyToClipboard(
+          coordsString,
+          "✅ Đã copy mã vị trí! Bạn có thể dán vào Google Maps.",
+        );
+      }
+
+      // Chia sẻ link
+      function shareLink() {
+        if (!currentLat || !currentLng) {
+          showError("Vui lòng lấy vị trí trước!");
+          return;
+        }
+
+        const shareUrl = `${window.location.origin}${window.location.pathname}?lat=${currentLat}&lng=${currentLng}`;
+
+        if (navigator.share) {
+          navigator
+            .share({
+              title: "Vị trí của tôi",
+              text: "Xem vị trí của tôi trên Google Maps",
+              url: shareUrl,
+            })
+            .catch((err) => {
+              if (err.name !== "AbortError") {
+                copyToClipboard(shareUrl, "✅ Đã copy link chia sẻ!");
+              }
+            });
+        } else {
+          copyToClipboard(shareUrl, "✅ Đã copy link chia sẻ!");
+        }
+      }
+
+      // Copy vào clipboard
+      function copyToClipboard(text, message) {
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            showToast(message);
+          })
+          .catch(() => {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+            showToast(message);
+          });
+      }
+
+      // Hiển thị toast thông báo
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("active");
+        setTimeout(() => {
+          toast.classList.remove("active");
+        }, 3000);
+      }
+
+      // Hiển thị lỗi
+      function showError(message) {
+        error.textContent = message;
+        error.classList.add("active");
+      }
+
+      // Event listeners
+      getLocationBtn.addEventListener("click", getCurrentLocation);
+      copyCoordsBtn.addEventListener("click", copyCoordinates);
+      shareLinkBtn.addEventListener("click", shareLink);
+
+      // Kiểm tra URL khi trang load
+      checkURLParams();
+    </script>
+  </body>
+</html>
