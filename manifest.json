@@ -1,6 +1,6 @@
 {
   "name": "Chia sẻ vị trí của tôi",
-  "short_name": "Vị trí",
+  "short_name": "Vị trí của tôi",
   "description": "Ứng dụng chia sẻ vị trí GPS",
   "start_url": "/",
   "display": "standalone",
