@@ -2,12 +2,12 @@
   "name": "Chia sẻ vị trí của tôi",
   "short_name": "Vị trí của tôi",
   "description": "Ứng dụng chia sẻ vị trí GPS",
+  "id": "/MyLocation/",
   "start_url": "/MyLocation/",
-  "scope": "/MyLocation/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#667eea",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "android/android-launchericon-512-512.png",
